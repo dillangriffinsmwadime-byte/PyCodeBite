@@ -1,10 +1,10 @@
-import sys
-import io
-import contextlib
 import os
-import shutil
 import json
+from io import BytesIO
 import streamlit as st
+from google import genai
+from gtts import gTTS
+from streamlit_mic_recorder import speech_to_text
 
 # App Configuration
 st.set_page_config(
@@ -38,341 +38,140 @@ app_mode = st.sidebar.selectbox(
         "Home Dashboard",
         "Free Lessons",
         "Pro Lessons (Advanced)",
-        "Live Code Playground",
-        "Python Quiz Engine",
         "AI Teacher Assistant",
-        "Certificate of Completion",
-        "Upgrade to Pro",
-    ],
+        "Certificate of Completion"
+    ]
 )
 
 # 1. HOME DASHBOARD
 if app_mode == "Home Dashboard":
     st.title("Welcome to PyCode Bite")
-    st.write(
-        "Your pocket-sized interactive tutor to master Python programming, test "
-        "your logic with quizzes, and build real development skills."
-    )
-
-    if st.session_state.user_data["is_pro"]:
-        st.success(
-            "**PRO TIER ACTIVE**: All advanced automation modules and AI "
-            "features are unlocked!"
-        )
-    else:
-        st.info(
-            "**Free Tier Active**: Upgrade to Pro anytime to unlock unlimited AI "
-            "tutoring and advanced modules."
-        )
-
-    st.markdown("### Learning Progress Overview")
-    score_val = st.session_state.user_data["quiz_score"]
-    st.metric(label="Latest Quiz Score", value=f"{score_val} / 3")
+    st.write("Your pocket-sized interactive tutor to master Python programming, test your logic with quizzes, and build real development skills.")
     
-    progress_val = 1.0 if st.session_state.user_data["quiz_completed"] else 0.5
-    st.progress(progress_val, text="Overall Curriculum Completion")
-
-    st.markdown("### App Curriculum Overview")
-    st.markdown("• **Foundations (Free):** Master variables, strings, and syntax rules.")
-    st.markdown("• **Control Flow & Loops (Free):** Learn how to build decisions and repeating routines.")
-    st.markdown("• **Data Structures (Free):** Learn how to store collections using Lists and Dictionaries.")
-    st.markdown("• **Automation & Lists (Pro):** Handle files, organize folders, and process data.")
-    st.markdown("• **AI Python Teacher (Pro):** Get instant conversational help when debugging code.")
+    if st.session_state.user_data["is_pro"]:
+        st.success("PRO TIER ACTIVE: All advanced automation modules and AI features are unlocked!")
+    else:
+        st.info("Free Tier Active. Upgrade to Pro for advanced modules and full AI access.")
+        
+    st.subheader("Learning Progress Overview")
+    st.write(f"Latest Quiz Score")
+    st.metric(label="Score", value=f"{st.session_state.user_data['quiz_score']}/3")
+    
+    progress_val = min(st.session_state.user_data['chapters_unlocked'] / 3.0, 1.0)
+    st.write("Overall Curriculum Completion")
+    st.progress(progress_val)
+    
+    st.subheader("App Curriculum Overview")
+    st.write("- **Foundations (Free):** Master variables, strings, and syntax rules.")
+    st.write("- **Control Flow & Loops (Free):** Learn how to build decisions and repeating routines.")
+    st.write("- **Data Structures (Free):** Learn how to store collections using Lists and Dictionaries.")
 
 # 2. FREE LESSONS
 elif app_mode == "Free Lessons":
-    st.header("Free Lessons")
-    st.subheader("Chapter 1: Variables & Core Syntax")
-    st.write(
-        "A variable is a container used to store data values. In Python, you "
-        "create a variable simply by assigning a value using the '=' operator."
-    )
-    st.code(
-        '# Example: Storing text and numbers\n'
-        'app_name = "PyCode"\n'
-        'base_version = 1.0\n'
-        'print(f"Welcome to {app_name} v{base_version}!")',
-        language="python",
-    )
-
-    st.subheader("Test It Out Link")
-    user_input = st.text_input(
-        "Enter a custom name for your script output:", st.session_state.user_data.get("student_name", "Dillan")
-    )
-    if st.button("Run Lesson Script"):
-        st.success(f"Output: Hello {user_input}! Your variable was read successfully.")
-
-    st.markdown("---")
-    st.subheader("Chapter 2: Conditional Logic (If / Else)")
-    st.write(
-        "Programs make decisions using conditional statements. If a condition "
-        "evaluates to True, the block runs; otherwise, it skips."
-    )
-    st.code(
-        'score = 75\n'
-        'if score >= 50:\n'
-        '    print("Pass!")\n'
-        'else:\n'
-        '    print("Fail!")',
-        language="python",
-    )
-
-    st.markdown("---")
-    st.subheader("Chapter 3: Lists & Dictionaries")
-    st.write(
-        "Lists allow you to store multiple items in a single variable using square brackets `[]`. "
-        "Dictionaries store key-value pairs using curly braces `{}`."
-    )
-    st.code(
-        '# List of favorite tools\n'
-        'tools = ["Photoshop", "Python", "VS Code"]\n'
-        'print(tools[0])  # Output: Photoshop\n\n'
-        '# Dictionary of user info\n'
-        'user = {"name": "Dillan", "role": "Developer"}\n'
-        'print(user["role"])  # Output: Developer',
-        language="python",
-    )
+    st.header("Free Python Lessons")
+    st.write("Master the basics of Python programming step-by-step.")
     
-    st.write("💡 **Mini Challenge:** Try typing a python list assignment below (e.g., `my_list = [1, 2, 3]`) and click Validate.")
-    challenge_input = st.text_input("Type your list code here:", "fruits = ['apple', 'banana', 'orange']")
-    if st.button("Validate Challenge"):
-        if "[" in challenge_input and "]" in challenge_input:
-            st.success("Great job! Your code properly uses list brackets `[]`.")
-        else:
-            st.warning("Make sure to include square brackets `[]` to declare a valid list in Python.")
+    lesson_tab = st.selectbox("Select Lesson", ["1. Variables & Strings", "2. Control Flow", "3. Data Structures"])
+    
+    if lesson_tab == "1. Variables & Strings":
+        st.subheader("Lesson 1: Variables and Strings")
+        st.write("A variable stores data. In Python, you create one by assigning a value using `=`: ")
+        st.code('name = "Dillan"\nprint(name)', language="python")
+    elif lesson_tab == "2. Control Flow":
+        st.subheader("Lesson 2: Control Flow")
+        st.write("Use `if`, `elif`, and `else` statements to make decisions in your code.")
+        st.code('score = 85\nif score >= 50:\n    print("Pass")', language="python")
+    else:
+        st.subheader("Lesson 3: Data Structures")
+        st.write("Lists let you store multiple items in a single variable ordered by index.")
+        st.code('languages = ["Python", "JavaScript", "HTML"]\nprint(languages[0])', language="python")
 
-# 3. PRO LESSONS (ADVANCED)
+# 3. PRO LESSONS
 elif app_mode == "Pro Lessons (Advanced)":
-    st.header("Pro Chapter: Automation & File Handling")
-
+    st.header("Pro Lessons (Advanced)")
     if not st.session_state.user_data["is_pro"]:
-        st.warning(
-            "**Locked Content:** This advanced module covers writing Python "
-            "scripts that automate file organization and system tasks. Upgrade to "
-            "Pro to unlock!"
-        )
-        if st.button("Unlock Pro Module Now"):
+        st.warning("This section contains advanced modules. Unlock Pro to view content.")
+        if st.button("Unlock Pro Access"):
             st.session_state.user_data["is_pro"] = True
             save_progress(st.session_state.user_data)
+            st.success("Pro access unlocked successfully! Refreshing...")
             st.rerun()
     else:
-        st.success("**Welcome to Pro Lessons: Advanced Script Unlocked!**")
-        st.write(
-            "In this module, you use Python's 'os' and 'shutil' libraries to scan directories, "
-            "filter file extensions, and automate cleanups using raw string path handlers."
-        )
-        st.code(
-            'import os\n'
-            'import shutil\n\n'
-            '# Define target directory safely using raw strings\n'
-            'target_dir = r"C:\\Users\\dilla\\OneDrive\\Desktop\\PyCodeBite"\n'
-            'backup_folder = os.path.join(target_dir, "TextBackups")\n\n'
-            'if not os.path.exists(backup_folder):\n'
-            '    os.makedirs(backup_folder)\n\n'
-            'for filename in os.listdir(target_dir):\n'
-            '    if filename.endswith(".txt"):\n'
-            '        src = os.path.join(target_dir, filename)\n'
-            '        dst = os.path.join(backup_folder, filename)\n'
-            '        shutil.move(src, dst)',
-            language="python",
-        )
+        st.success("Welcome to Advanced Pro Modules!")
+        st.write("- Object-Oriented Programming (OOP)")
+        st.write("- File Handling and Automation Scripts")
+        st.write("- Web Scraping with BeautifulSoup")
 
-        st.markdown("---")
-        st.subheader("Interactive Batch Renaming Tool")
-        st.write("Run the batch renaming utility directly against your workspace directory.")
-        prefix_input = st.text_input("Enter prefix for batch renaming:", "clean_")
-        
-        if st.button("Run Batch Rename Automation"):
-            target_dir = r"C:\Users\dilla\OneDrive\Desktop\PyCodeBite"
-            renamed_count = 0
-            
-            for filename in os.listdir(target_dir):
-                if os.path.isfile(os.path.join(target_dir, filename)) and not filename.startswith(prefix_input) and filename != "app.py":
-                    old_path = os.path.join(target_dir, filename)
-                    new_filename = prefix_input + filename
-                    new_path = os.path.join(target_dir, new_filename)
-                    os.rename(old_path, new_path)
-                    renamed_count += 1
-            
-            st.success(f"Automation Complete! Successfully renamed {renamed_count} files using prefix: '{prefix_input}'")
-
-        st.markdown("---")
-        st.subheader("Direct Script Export")
-        st.write("Package and download your file organization automation script as a standalone `.py` file.")
-        
-        export_script_code = '''import os
-import shutil
-
-target_dir = r"C:\\Users\\dilla\\OneDrive\\Desktop\\PyCodeBite"
-backup_folder = os.path.join(target_dir, "TextBackups")
-
-if not os.path.exists(backup_folder):
-    os.makedirs(backup_folder)
-    print("Created 'TextBackups' folder.")
-
-for filename in os.listdir(target_dir):
-    if filename.endswith(".txt"):
-        src = os.path.join(target_dir, filename)
-        dst = os.path.join(backup_folder, filename)
-        shutil.move(src, dst)
-        print(f"Moved: {filename} -> TextBackups/")
-'''
-        st.download_button(
-            label="Download Automation Script (.py)",
-            data=export_script_code,
-            file_name="auto_organizer.py",
-            mime="text/plain",
-        )
-
-# 4. LIVE CODE PLAYGROUND
-elif app_mode == "Live Code Playground":
-    st.subheader("Live Python Playground")
-    st.write(
-        "Write custom Python code below and click 'Execute Script' to run it "
-        "safely inside your environment sandbox."
-    )
-
-    default_code = 'print("Welcome to PyCodeBite!")\n\n# Try writing a loop:\nfor i in range(3):\n    print(f"Count: {i}")'
-    user_code = st.text_area("Code Editor", value=default_code, height=180)
-
-    if st.button("Execute Script"):
-        output_buffer = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(output_buffer):
-                exec(user_code)
-            execution_output = output_buffer.getvalue()
-
-            st.success("Execution Complete:")
-            st.code(
-                execution_output
-                if execution_output
-                else "Code ran with no printed output.",
-                language="python",
-            )
-        except Exception as err:
-            st.error(f"Runtime Error: {err}")
-
-# 5. PYTHON QUIZ ENGINE
-elif app_mode == "Python Quiz Engine":
-    st.header("Python Knowledge Quiz")
-    st.write(
-        "Test your understanding of Python fundamentals with this interactive 3-question quiz."
-    )
-
-    q1 = "1. Which keyword is used to define a function in Python?"
-    ans1 = st.radio(
-        q1,
-        ["def", "function", "fun", "define"],
-        key="q1",
-    )
-
-    q2 = "2. Which symbol is used to write single-line comments in Python?"
-    ans2 = st.radio(q2, ["//", "/", "*", "#"], key="q2")
-
-    q3 = "3. What data type is the result of: x = 10 / 2 in Python 3?"
-    ans3 = st.radio(
-        q3,
-        ["Integer (int)", "Float (float)", "String", "Boolean"],
-        key="q3",
-    )
-
-    if st.button("Submit All Answers"):
-        score = 0
-        if ans1 == "def":
-            score += 1
-        if ans2 == "#":
-            score += 1
-        if ans3 == "Float (float)":
-            score += 1
-
-        st.session_state.user_data["quiz_score"] = score
-        st.session_state.user_data["quiz_completed"] = True
-        save_progress(st.session_state.user_data)
-
-        if score == 3:
-            st.success(
-                f"Flawless Victory! Score: {score}/3 correct. Outstanding work!"
-            )
-            st.balloons()
-        elif score >= 1:
-            st.info(
-                f"Good effort! Score: {score}/3 correct. Review the lesson tabs "
-                "to master the missed concepts."
-            )
-        else:
-            st.error(
-                f"❌ Score: {score}/3. Don't worry! Jump over to the **AI Teacher** "
-                "tab to get step-by-step guidance."
-            )
-
-# 6. AI TEACHER ASSISTANT
+# 4. AI TEACHER ASSISTANT (TEXT, VOICE INPUT & VOICE OUTPUT)
 elif app_mode == "AI Teacher Assistant":
-    st.header("AI Python Teacher Chat")
+    st.header("🤖 AI Python Teacher Assistant")
+    st.write("Stuck on a tricky loop, a syntax bug, or a programming concept? Ask your AI tutor via typing or voice, and listen to spoken answers!")
 
-    if not st.session_state.user_data["is_pro"]:
-        st.warning(
-            "**Pro Feature Locked:** The conversational AI Teacher assistant is "
-            "restricted to Pro members. Upgrade to get unlimited debugging "
-            "support!"
-        )
-        if st.button("Instant Pro Unlock"):
-            st.session_state.user_data["is_pro"] = True
-            save_progress(st.session_state.user_data)
-            st.rerun()
-    else:
-        st.write(
-            "Stuck on a tricky loop, a syntax bug, or a quiz question? Ask your AI "
-            "tutor right here!"
-        )
+    # Initialize Gemini Client using Streamlit secrets
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    client = None
+    if api_key:
+        try:
+            client = genai.Client(api_key=api_key)
+        except Exception as e:
+            st.error(f"Failed to initialize Gemini client: {e}")
 
-        if "messages" not in st.session_state:
-            st.session_state.messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an encouraging, friendly Python programming instructor."
-                    ),
-                }
-            ]
+    # Initialize chat history in session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-        for message in st.session_state.messages:
-            if message["role"] != "system":
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
+    # Display past chat messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-        if user_prompt := st.chat_input(
-            "Ask a question (e.g., 'How do for loops work?')"
-        ):
-            st.session_state.messages.append(
-                {"role": "user", "content": user_prompt}
-            )
-            with st.chat_message("user"):
-                st.markdown(user_prompt)
+    # Voice Input widget via mic recorder
+    col1, col2 = st.columns([0.75, 0.25])
+    with col2:
+        spoken_text = speech_to_text(language="en", use_container_width=True, key="voice_input")
 
-            if "loop" in user_prompt.lower():
-                ai_response = (
-                    "A for loop iterates over a sequence. Here is a quick example:\n"
-                    "```python\nfor i in range(3):\n    print(f'Item index: {i}')\n```"
-                )
-            elif "function" in user_prompt.lower():
-                ai_response = (
-                    "Functions group code blocks together using 'def'. Example:\n"
-                    "```python\ndef calculate_sum(a, b):\n    return a + b\n```"
-                )
-            else:
-                ai_response = (
-                    f"That's a great question about '{user_prompt}'! In Python, breaking "
-                    "your logic down line-by-line helps isolate errors. What specific "
-                    "part of your script are you testing right now?"
-                )
+    # Standard Text Chat Input
+    prompt = st.chat_input("Ask a Python question (e.g., How do functions work?)")
 
-            with st.chat_message("assistant"):
+    # If voice input captured speech, override prompt
+    if spoken_text:
+        prompt = spoken_text
+
+    if prompt:
+        # Append and display user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Generate AI Response
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking through your Python question..."):
+                if client:
+                    try:
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=f"You are a friendly, encouraging Python programming teacher for beginners. Explain clearly and concisely: {prompt}"
+                        )
+                        ai_response = response.text
+                    except Exception as e:
+                        ai_response = f"⚠️ Error generating response: {e}"
+                else:
+                    ai_response = f"⚠️ Please configure your `GEMINI_API_KEY` in Streamlit secrets to enable live AI responses. (Your question was: {prompt})"
+                
                 st.markdown(ai_response)
-            st.session_state.messages.append(
-                {"role": "assistant", "content": ai_response}
-            )
+                st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
-# 7. CERTIFICATE OF COMPLETION
+                # Text-to-Speech (gTTS) to let the AI talk back out loud
+                try:
+                    tts_file = BytesIO()
+                    tts = gTTS(text=ai_response, lang="en", slow=False)
+                    tts.write_to_fp(tts_file)
+                    tts_file.seek(0)
+                    st.audio(tts_file, format="audio/mp3", autoplay=True)
+                except Exception as audio_err:
+                    st.info(f"Audio playback note: {audio_err}")
+
+# 5. CERTIFICATE OF COMPLETION
 elif app_mode == "Certificate of Completion":
     st.header("Certificate of Completion")
     st.write("Generate and download your personalized PyCode Bite course completion certificate.")
@@ -381,63 +180,34 @@ elif app_mode == "Certificate of Completion":
     st.session_state.user_data["student_name"] = student_name_input
     save_progress(st.session_state.user_data)
 
+    if st.button("Mark Quiz Complete"):
+        st.session_state.user_data["quiz_completed"] = True
+        st.session_state.user_data["quiz_score"] = 3
+        save_progress(st.session_state.user_data)
+        st.success("Course requirements marked as complete!")
+
     if st.session_state.user_data["quiz_completed"]:
-        st.success("🎉 Course Requirements Met! Your certificate is ready for generation.")
-        
-        cert_text = f"""==================================================
-           PYCODE BITE LEARNING PLATFORM
-            CERTIFICATE OF COMPLETION
+        st.success("🏆 Course Requirements Met! Your certificate is ready.")
+        cert_text = f"""
+==================================================
+        PYCODE BITE LEARNING PLATFORM
+          CERTIFICATE OF COMPLETION
 ==================================================
 
-  This certifies that
-  
-      {student_name_input}
-      
-  has successfully completed the interactive Python 
-  programming curriculum, core modules, and assessments.
-  
-  Score Achieved: {st.session_state.user_data['quiz_score']} / 3
-  Platform: PyCode Bite Hub (Streamlit Edition)
-==================================================="""
-        
-        st.code(cert_text, language="text")
+This certifies that
+
+        {student_name_input}
+
+has successfully completed the interactive Python curriculum and demonstrated core programming proficiency.
+
+==================================================
+"""
+        st.text(cert_text)
         st.download_button(
-            label="Download Official Certificate (.txt)",
+            label="Download Certificate (TXT)",
             data=cert_text,
             file_name="PyCodeBite_Certificate.txt",
-            mime="text/plain",
+            mime="text/plain"
         )
     else:
-        st.warning("⚠️ You must complete the **Python Quiz Engine** test at least once before generating your certificate.")
-
-# 8. UPGRADE TO PRO
-elif app_mode == "Upgrade to Pro":
-    st.title("Unlock PyCode Bite Pro")
-    st.write(
-        "Take your coding journey further with lifetime access to advanced "
-        "automation modules, an ad-free workspace, and unlimited AI tutoring."
-    )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### Free Tier")
-        st.markdown("- Core Syntax Lessons")
-        st.markdown("- Standard Quiz Engine")
-        st.markdown("- Interactive Playground")
-    with col2:
-        st.markdown("### Pro Tier")
-        st.markdown("- Unlimited AI Tutor")
-        st.markdown("- Advanced Automation Modules")
-        st.markdown("- Priority Updates & Badges")
-
-    st.markdown("---")
-    if not st.session_state.user_data["is_pro"]:
-        if st.button("Upgrade to Pro Now ($2.99)"):
-            st.session_state.user_data["is_pro"] = True
-            save_progress(st.session_state.user_data)
-            st.success(
-                "Payment simulation successful! Pro features are now unlocked!"
-            )
-            st.balloons()
-    else:
-        st.info("You are currently a verified Pro subscriber. Enjoy your full app!")
+        st.warning("Complete your quizzes and lessons to unlock your certificate generation.")
