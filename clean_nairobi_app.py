@@ -149,7 +149,7 @@ elif app_mode == "AI Teacher Assistant":
                 if client:
                     try:
                         response = client.models.generate_content(
-                            model="gemini-2.0-flash",
+                            model="gemini-3.8-flash",
                             contents=f"You are a friendly, encouraging Python programming teacher for beginners. Explain clearly and concisely: {prompt}"
                         )
                         ai_response = response.text
